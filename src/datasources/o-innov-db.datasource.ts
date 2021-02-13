@@ -5,10 +5,10 @@ const config = {
   name: 'OInnovDb',
   connector: 'postgresql',
   url: '',
-  host: 'localhost',
-  port: 5433,
+  host: '127.0.0.1',
+  port: 5432,
   user: 'postgres',
-  password: 'FSfHJbCwEJbQb4k',
+  password: '',
   database: 'OinnovDb'
 };
 

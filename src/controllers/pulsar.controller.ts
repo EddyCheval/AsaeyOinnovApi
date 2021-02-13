@@ -1,7 +1,10 @@
 import {inject} from '@loopback/core';
-import {get, Request, response, ResponseObject, RestBindings} from '@loopback/rest';
+import {Filter, repository} from '@loopback/repository';
+import {get, getModelSchemaRef, Request, requestBody, response, Response, ResponseObject, RestBindings} from '@loopback/rest';
 import Pulsar from 'pulsar-client';
-
+import {Actor, Prediction} from '../models';
+import {ActorRepository, PredictionRepository, UserRepository} from '../repositories';
+import multer = require('multer');
 /**
  * OpenAPI response for ping()
  */
@@ -30,7 +33,14 @@ const PULSAR_RESPONSE: ResponseObject = {
 };
 
 export class PulsarController {
-  constructor(@inject(RestBindings.Http.REQUEST) private req: Request) { }
+  constructor(@inject(RestBindings.Http.REQUEST) private req: Request,
+    @repository(PredictionRepository)
+    public predictionRepository: PredictionRepository,
+    @repository(ActorRepository)
+    public actorRepository: ActorRepository,
+    @repository(UserRepository)
+    public userRepository: UserRepository) {
+  }
 
 
   client(): Pulsar.Client {
@@ -46,9 +56,6 @@ export class PulsarController {
   }
 
 
-  // Map to `GET /ping`
-  @get('/pulsar/consume')
-  @response(200, PULSAR_RESPONSE)
 
   async consumer(): Promise<object> {
     const client = this.client();
@@ -70,30 +77,87 @@ export class PulsarController {
     };
   }
 
-  @get('/pulsar/produce')
-  @response(200, PULSAR_RESPONSE)
-  async procuder(): Promise<object> {
-    const client = this.client();
-    const producer = await client.createProducer({
-      topic: 'sound-feed',
-    });
-    const content = {
-      path: '/content/drive/My Drive/DataSet/VoicePerso/Test 1 - EC/Test/mardi à 13-04.m4a',
-      name: 'mardi à 13-04.m4a',
-      speaker: 912,
-    };
-    producer.send({
-      data: Buffer.from(JSON.stringify(content))
+  @get('/prediction')
+  @response(200, {
+    description: 'Actor model instance',
+    content: {'application/json': {schema: getModelSchemaRef(Prediction)}},
+  })
+  async prediction(
+    @requestBody({
+      content: {
+        'multipart/form-data': {
+          'x-parser': 'stream',
+          schema: {type: 'object'},
+        }
+      },
     })
+    request: Request,
+    @inject(RestBindings.Http.RESPONSE) response: Response,
+  ): Promise<object> {
+    const storage = multer.memoryStorage();
+    const upload = multer({storage});
+    const buffer = new Promise<any>((resolve, reject) => {
+      upload.any()(request, response, (err: any) => {
+        if (err) reject(err);
+        else {
+          resolve({
+            files: request.files,
+            fields: (request as any).fields,
+            body: request.body,
+          });
+        }
+      });
+    });
 
-    await producer.flush();
+    const bufferResult = await buffer;
+    try {
+      if (bufferResult.body['prediction'] != null) {
+        const file: Express.Multer.File = bufferResult.files[0];
+        const filename = Date.now().toString() + file.originalname;
+        const prediction: Omit<Prediction, 'id'> = JSON.parse(bufferResult.body['prediction']);
+        const client = this.client();
+        const producer = await client.createProducer({
+          topic: 'sound-feed', //a mettre dans le .env si on veut faire du kube
+        });
+        const content = {
+          path: '/content/drive/My Drive/DataSet/VoicePerso/Test 1 - EC/Test/' + filename,
+          name: filename,
+          speaker: prediction.user_id,
+        };
+        producer.send({
+          data: Buffer.from(JSON.stringify(content))
+        });
 
-    await producer.close();
-    await client.close();
-    return {
-      status: "done",
-      date: new Date(),
-      url: this.req.url,
-    };
+        await producer.flush();
+
+        await producer.close();
+        const consumer = await client.subscribe({
+          topic: prediction.user_id,
+          subscription: 'pythonIA',
+          subscriptionType: 'Exclusive',
+
+        });
+        const msg = await consumer.receive();
+        consumer.acknowledge(msg);
+        await consumer.close();
+        await client.close();
+        const Ia_response = JSON.parse(msg.getData().toString());
+        const filter: Filter<Actor> = {
+          where: {code_ia: Ia_response}
+        }
+        const actor: any = await this.actorRepository.findOne(filter);
+        this.actorRepository.predictions("041cacfb-6593-4916-b088-77bd90b076a4").create(prediction);
+        return response.json(actor);
+      }
+    }
+    catch (err) {
+      response.statusCode = 400;
+      return response.json({error: err});
+    }
+
+    response.statusCode = 400;
+    return new Object({
+      error: "Une erreur est survenue"
+    });
   }
 }
