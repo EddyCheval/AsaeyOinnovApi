@@ -5,6 +5,7 @@ import Pulsar from 'pulsar-client';
 import {Actor, Prediction} from '../models';
 import {ActorRepository, PredictionRepository, UserRepository} from '../repositories';
 import multer = require('multer');
+import avro = require('avro-js');
 /**
  * OpenAPI response for ping()
  */
@@ -113,41 +114,46 @@ export class PulsarController {
     try {
       if (bufferResult.body['prediction'] != null) {
         const file: Express.Multer.File = bufferResult.files[0];
-        const filename = Date.now().toString() + file.originalname;
+        const filename = file.originalname; //Date.now().toString() + file.originalname;
         const prediction: Omit<Prediction, 'id'> = JSON.parse(bufferResult.body['prediction']);
         const client = this.client();
         const producer = await client.createProducer({
-          topic: 'sound-feed', //a mettre dans le .env si on veut faire du kube
+          topic: 'predictions-queue', //a mettre dans le .env si on veut faire du kube
         });
+
         const content = {
-          path: '/content/drive/My Drive/DataSet/VoicePerso/Test 1 - EC/Test/' + filename,
+          path: '/content/drive/My Drive/DataSet/VoicePerso/Test 1 - EC/Test/' + filename, //set l'url du bucket
           name: filename,
-          speaker: prediction.user_id,
+          user: prediction.user_id,
         };
+
         producer.send({
-          data: Buffer.from(JSON.stringify(content))
+          data: Buffer.from(JSON.stringify(content)) //schema.toBuffer(content)
         });
 
         await producer.flush();
 
         await producer.close();
+
         const consumer = await client.subscribe({
           topic: prediction.user_id,
           subscription: 'pythonIA',
           subscriptionType: 'Exclusive',
 
         });
-        const msg = await consumer.receive();
+        const msg = await consumer.receive(10000);
         consumer.acknowledge(msg);
         await consumer.close();
         await client.close();
-        const Ia_response = JSON.parse(msg.getData().toString());
+        const response = JSON.parse(msg.getData().toString('utf-8'));
+        const Ia_response = response.speaker;
         const filter: Filter<Actor> = {
           where: {code_ia: Ia_response}
         }
         const actor: any = await this.actorRepository.findOne(filter);
-        this.actorRepository.predictions("041cacfb-6593-4916-b088-77bd90b076a4").create(prediction);
-        return response.json(actor);
+
+        this.actorRepository.predictions(actor.id).create(prediction);
+        return actor;
       }
     }
     catch (err) {
