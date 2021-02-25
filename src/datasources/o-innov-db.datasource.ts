@@ -3,13 +3,13 @@ import {juggler} from '@loopback/repository';
 
 const config = {
   name: 'OInnovDb',
-  connector: 'postgresql',
+  connector: process.env.DB_CONNECTOR,
   url: '',
-  host: '127.0.0.1',
-  port: 5432,
-  user: 'postgres',
-  password: '',
-  database: 'OinnovDb'
+  host: process.env.DB_HOST,
+  port: process.env.DB_PORT,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
 };
 
 // Observe application's life cycle to disconnect the datasource when

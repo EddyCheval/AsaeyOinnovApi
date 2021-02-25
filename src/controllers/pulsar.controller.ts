@@ -1,11 +1,18 @@
 import {inject} from '@loopback/core';
 import {Filter, repository} from '@loopback/repository';
 import {get, getModelSchemaRef, Request, requestBody, response, Response, ResponseObject, RestBindings} from '@loopback/rest';
+import {PutObjectRequest} from 'aws-sdk/clients/s3';
 import Pulsar from 'pulsar-client';
 import {Actor, Prediction} from '../models';
 import {ActorRepository, PredictionRepository, UserRepository} from '../repositories';
 import multer = require('multer');
-import avro = require('avro-js');
+import AWS = require('aws-sdk');
+const s3Config = new AWS.Config({
+  accessKeyId: process.env.ACCESS_KEY_S3,
+  secretAccessKey: process.env.SECRET_KEY_S3,
+  endpoint: "https://" + process.env.ENDPOINT,
+  s3BucketEndpoint: false,
+} as any)
 /**
  * OpenAPI response for ping()
  */
@@ -46,36 +53,14 @@ export class PulsarController {
 
   client(): Pulsar.Client {
     const auth = new Pulsar.AuthenticationToken({
-      token: 'NO_TOKEN'
-    })
+      token: process.env.TOKEN_PULSAR as string
+    });
 
     const client = new Pulsar.Client({
-      serviceUrl: "pulsar+ssl://maincluster.asaey-oinnov.europe-west3.streamnative.g.snio.cloud:6651",
+      serviceUrl: process.env.SERVICE_PULSAR_URL as string,
       authentication: auth
     });
     return client;
-  }
-
-
-
-  async consumer(): Promise<object> {
-    const client = this.client();
-    const consumer = await client.subscribe({
-      topic: 'sound-feed',
-      subscription: 'pythonIA',
-      subscriptionType: 'Exclusive',
-
-    });
-    const msg = await consumer.receive();
-    consumer.acknowledge(msg);
-    await consumer.close();
-    await client.close();
-    return {
-      content: JSON.parse(msg.getData().toString()),
-      date: new Date(),
-      url: this.req.url,
-      headers: Object.assign({}, this.req.headers),
-    };
   }
 
   @get('/prediction')
@@ -95,6 +80,7 @@ export class PulsarController {
     request: Request,
     @inject(RestBindings.Http.RESPONSE) response: Response,
   ): Promise<object> {
+    const s3 = new AWS.S3(s3Config);
     const storage = multer.memoryStorage();
     const upload = multer({storage});
     const buffer = new Promise<any>((resolve, reject) => {
@@ -114,15 +100,27 @@ export class PulsarController {
     try {
       if (bufferResult.body['prediction'] != null) {
         const file: Express.Multer.File = bufferResult.files[0];
-        const filename = file.originalname; //Date.now().toString() + file.originalname;
+        const filename = Date.now().toString() + '-' + file.originalname;
         const prediction: Omit<Prediction, 'id'> = JSON.parse(bufferResult.body['prediction']);
         const client = this.client();
         const producer = await client.createProducer({
           topic: 'predictions-queue', //a mettre dans le .env si on veut faire du kube
         });
+        const data: PutObjectRequest = {
+          Bucket: process.env.BUCKET_NAME as string,
+          Key: filename,
+          Body: file.buffer
+        }
+        const result = s3.upload(data).promise().then(
+          function (data) {
+            console.log("Successfully uploaded to " + process.env.BUCKET_NAME + "/" + filename)
+          }).catch(
+            function (err) {
+              console.error(err, err.stack)
+            });
 
         const content = {
-          path: '/content/drive/My Drive/DataSet/VoicePerso/Test 1 - EC/Test/' + filename, //set l'url du bucket
+          path: 'https://' + process.env.BUCKET_NAME + "." + process.env.ENDPOINT + "/" + filename,
           name: filename,
           user: prediction.user_id,
         };
@@ -158,7 +156,7 @@ export class PulsarController {
     }
     catch (err) {
       response.statusCode = 400;
-      return response.json({error: err});
+      return response.json({error: JSON.stringify(err)});
     }
 
     response.statusCode = 400;
