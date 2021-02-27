@@ -18,7 +18,7 @@ import {
   response
 } from '@loopback/rest';
 import {SecurityBindings, securityId, UserProfile} from '@loopback/security';
-import {genSalt, hash} from 'bcryptjs';
+import {compare, genSalt, hash} from 'bcryptjs';
 import {User, UserRelations} from '../models';
 import {UserRepository} from '../repositories';
 
@@ -77,24 +77,30 @@ export class UserController {
     if (credentials.email != null && credentials.password != null) {
       const filter: Filter<User> = {
         where: {
-          password: credentials.password,
           mail: credentials.email,
         }
       }
       const user: (User & UserRelations) | null = await this.userRepository.findOne(filter);
-      if (user != null) {
-        const userProfile: LoginUser = {
-          email: user!.mail,
-          password: user!.password,
-          [securityId]: user!.id as any,
-        }
-        // create a JSON Web Token based on the user profile
-        const token = await this.jwtService.generateToken(userProfile);
-        return {token};
+      if (!user) {
+        throw new HttpErrors.Unauthorized("Invalid Credentials");
       }
-      else {
-        throw new HttpErrors[401]("Invalid Credentials")
+
+      const passwordMatched = await compare(
+        credentials.password,
+        user.password,
+      );
+
+      if (!passwordMatched) {
+        throw new HttpErrors.Unauthorized("Invalid Credentials");
       }
+      const userProfile: LoginUser = {
+        email: user!.mail,
+        password: user!.password,
+        [securityId]: user!.id as any,
+      }
+      // create a JSON Web Token based on the user profile
+      const token = await this.jwtService.generateToken(userProfile);
+      return {token};
     }
     else {
       throw new HttpErrors[401]("Empty Credentials")
