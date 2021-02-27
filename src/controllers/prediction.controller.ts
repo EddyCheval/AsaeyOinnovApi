@@ -4,27 +4,45 @@ import {
   Filter,
   FilterExcludingWhere,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
-  post,
-  param,
-  get,
-  getModelSchemaRef,
-  patch,
+  del, get,
+  getModelSchemaRef, param,
+
+
+  patch, post,
+
+
+
+
   put,
-  del,
+
   requestBody,
-  response,
+  response
 } from '@loopback/rest';
+import Pulsar from 'pulsar-client';
 import {Prediction} from '../models';
 import {PredictionRepository} from '../repositories';
 
 export class PredictionController {
   constructor(
     @repository(PredictionRepository)
-    public predictionRepository : PredictionRepository,
-  ) {}
+    public predictionRepository: PredictionRepository,
+  ) { }
+
+
+  client(): Pulsar.Client {
+    const auth = new Pulsar.AuthenticationToken({
+      token: process.env.TOKEN_PULSAR as string
+    });
+
+    const client = new Pulsar.Client({
+      serviceUrl: process.env.SERVICE_PULSAR_URL as string,
+      authentication: auth
+    });
+    return client;
+  }
 
   @post('/predictions')
   @response(200, {
@@ -92,6 +110,26 @@ export class PredictionController {
     prediction: Prediction,
     @param.where(Prediction) where?: Where<Prediction>,
   ): Promise<Count> {
+    if (prediction.validation == true && prediction.pending == true) {
+      const client = this.client();
+      const producer = await client.createProducer({
+        topic: 'sound-feed',
+      });
+      var name = prediction.path.substring(prediction.path.lastIndexOf('/') + 1);
+      const content = {
+        path: prediction.path,
+        name: name,
+        speaker: prediction.actor_id,
+      };
+      producer.send({
+        data: Buffer.from(JSON.stringify(content))
+      });
+
+      await producer.flush();
+      await producer.close();
+      await client.close();
+      prediction.pending = false;
+    }
     return this.predictionRepository.updateAll(prediction, where);
   }
 
@@ -137,6 +175,26 @@ export class PredictionController {
     @param.path.string('id') id: string,
     @requestBody() prediction: Prediction,
   ): Promise<void> {
+    if (prediction.validation == true && prediction.pending == true) {
+      const client = this.client();
+      const producer = await client.createProducer({
+        topic: 'sound-feed',
+      });
+      var name = prediction.path.substring(prediction.path.lastIndexOf('/') + 1);
+      const content = {
+        path: prediction.path,
+        name: name,
+        speaker: prediction.actor_id,
+      };
+      producer.send({
+        data: Buffer.from(JSON.stringify(content))
+      });
+
+      await producer.flush();
+      await producer.close();
+      await client.close();
+      prediction.pending = false;
+    }
     await this.predictionRepository.replaceById(id, prediction);
   }
 

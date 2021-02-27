@@ -27,7 +27,7 @@ export class Prediction extends Entity {
     type: 'string',
     required: true,
   })
-  path: boolean;
+  path: string;
 
   @belongsTo(() => User, {name: 'user_frg_key'})
   user_id: string;

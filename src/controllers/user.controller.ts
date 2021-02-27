@@ -1,31 +1,105 @@
+import {TokenService} from '@loopback/authentication';
+import {TokenServiceBindings} from '@loopback/authentication-jwt';
+import {inject} from '@loopback/core';
 import {
   Count,
   CountSchema,
   Filter,
   FilterExcludingWhere,
+  model,
+  property,
   repository,
-  Where,
+  Where
 } from '@loopback/repository';
 import {
-  post,
-  param,
-  get,
-  getModelSchemaRef,
-  patch,
-  put,
-  del,
+  del, get,
+  getModelSchemaRef, HttpErrors, param, patch, post, put,
   requestBody,
-  response,
+  response
 } from '@loopback/rest';
-import {User} from '../models';
+import {SecurityBindings, securityId, UserProfile} from '@loopback/security';
+import {genSalt, hash} from 'bcryptjs';
+import {User, UserRelations} from '../models';
 import {UserRepository} from '../repositories';
+
+
+model()
+export class Login {
+  @property({
+    type: 'string',
+    required: true,
+  })
+  email: string;
+  @property({
+    type: 'string',
+    required: true,
+  })
+  password: string;
+}
+
+model()
+export class LoginUser extends Login implements UserProfile {
+  [securityId]: string;
+}
 
 export class UserController {
   constructor(
+    @inject(SecurityBindings.USER, {optional: true})
+    public user: UserProfile,
+    @inject(TokenServiceBindings.TOKEN_SERVICE)
+    public jwtService: TokenService,
     @repository(UserRepository)
-    public userRepository : UserRepository,
-  ) {}
+    public userRepository: UserRepository,
+  ) { }
 
+  @post('/users/login', {
+    responses: {
+      '200': {
+        description: 'Token',
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                token: {
+                  type: 'string',
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  })
+  async login(
+    @requestBody(Login) credentials: Login,
+  ): Promise<{token: string}> {
+    if (credentials.email != null && credentials.password != null) {
+      const filter: Filter<User> = {
+        where: {
+          password: credentials.password,
+          mail: credentials.email,
+        }
+      }
+      const user: (User & UserRelations) | null = await this.userRepository.findOne(filter);
+      if (user != null) {
+        const userProfile: LoginUser = {
+          email: user!.mail,
+          password: user!.password,
+          [securityId]: user!.id as any,
+        }
+        // create a JSON Web Token based on the user profile
+        const token = await this.jwtService.generateToken(userProfile);
+        return {token};
+      }
+      else {
+        throw new HttpErrors[401]("Invalid Credentials")
+      }
+    }
+    else {
+      throw new HttpErrors[401]("Empty Credentials")
+    }
+  }
   @post('/users')
   @response(200, {
     description: 'User model instance',
@@ -44,6 +118,8 @@ export class UserController {
     })
     user: Omit<User, 'id'>,
   ): Promise<User> {
+    const password = await hash(user.password, await genSalt());
+    user.password = password;
     return this.userRepository.create(user);
   }
 
