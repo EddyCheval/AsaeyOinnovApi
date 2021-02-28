@@ -110,26 +110,6 @@ export class PredictionController {
     prediction: Prediction,
     @param.where(Prediction) where?: Where<Prediction>,
   ): Promise<Count> {
-    if (prediction.validation == true && prediction.pending == true) {
-      const client = this.client();
-      const producer = await client.createProducer({
-        topic: 'sound-feed',
-      });
-      var name = prediction.path.substring(prediction.path.lastIndexOf('/') + 1);
-      const content = {
-        path: prediction.path,
-        name: name,
-        speaker: prediction.actor_id,
-      };
-      producer.send({
-        data: Buffer.from(JSON.stringify(content))
-      });
-
-      await producer.flush();
-      await producer.close();
-      await client.close();
-      prediction.pending = false;
-    }
     return this.predictionRepository.updateAll(prediction, where);
   }
 
@@ -180,11 +160,12 @@ export class PredictionController {
       const producer = await client.createProducer({
         topic: 'sound-feed',
       });
+      var actor = await this.predictionRepository.actor_frg_key(id);
       var name = prediction.path.substring(prediction.path.lastIndexOf('/') + 1);
       const content = {
         path: prediction.path,
         name: name,
-        speaker: prediction.actor_id,
+        speaker: actor.code_ia,
       };
       producer.send({
         data: Buffer.from(JSON.stringify(content))
