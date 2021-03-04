@@ -1,4 +1,4 @@
-import {Entity, model, property, hasMany} from '@loopback/repository';
+import {Entity, hasMany, model, property} from '@loopback/repository';
 import {Prediction} from './prediction.model';
 
 @model()
@@ -24,6 +24,9 @@ export class Actor extends Entity {
 
   @property({
     type: 'string',
+    jsonSchema: {
+      nullable: true
+    }
   })
   url_imdb?: string;
 

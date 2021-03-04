@@ -24,6 +24,9 @@ export class User extends Entity {
 
   @property({
     type: 'string',
+    jsonSchema: {
+      nullable: true
+    }
   })
   address?: string;
 
