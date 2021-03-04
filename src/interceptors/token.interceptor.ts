@@ -48,7 +48,7 @@ export class TokenInterceptor implements Provider<Interceptor> {
       var headers = requestCtx.request.headers;
       var auth = headers.authorization;
       const route = requestCtx.request.url;
-      if (route !== '/explorer/' && route !== '/explorer/openapi.json' && route !== '/users/login') {
+      if (route !== '/explorer/' && route !== '/explorer' && route !== '/explorer/openapi.json' && route !== '/users/login') {
         // Add pre-invocation logic here
         try {
           var userProfile = await this.jwtService.verifyToken(auth!)

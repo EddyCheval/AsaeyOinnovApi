@@ -97,66 +97,67 @@ export class PulsarController {
     });
 
     const bufferResult = await buffer;
-    try {
-      if (bufferResult.body['prediction'] != null) {
-        const file: Express.Multer.File = bufferResult.files[0];
-        const filename = Date.now().toString() + '-' + file.originalname;
-        const prediction: Omit<Prediction, 'id'> = JSON.parse(bufferResult.body['prediction']);
-        const client = this.client();
-        const producer = await client.createProducer({
-          topic: 'predictions-queue', //a mettre dans le .env si on veut faire du kube
-        });
-        const data: PutObjectRequest = {
-          Bucket: process.env.BUCKET_NAME as string,
-          Key: filename,
-          Body: file.buffer
-        }
-        const result = s3.upload(data).promise().then(
-          function (data) {
-            console.log("Successfully uploaded to " + process.env.BUCKET_NAME + "/" + filename)
-          }).catch(
-            function (err) {
-              console.error(err, err.stack)
-            });
-
-        const content = {
-          path: 'https://' + process.env.BUCKET_NAME + "." + process.env.ENDPOINT + "/" + filename,
-          name: filename,
-          user: prediction.user_id,
-        };
-
-        producer.send({
-          data: Buffer.from(JSON.stringify(content)) //schema.toBuffer(content)
-        });
-
-        await producer.flush();
-
-        await producer.close();
-
-        const consumer = await client.subscribe({
-          topic: prediction.user_id,
-          subscription: 'pythonIA',
-          subscriptionType: 'Exclusive',
-
-        });
-        const msg = await consumer.receive(10000);
-        consumer.acknowledge(msg);
-        await consumer.close();
-        await client.close();
-        const response = JSON.parse(msg.getData().toString('utf-8'));
-        const Ia_response = response.speaker;
-        const filter: Filter<Actor> = {
-          where: {code_ia: Ia_response}
-        }
-        const actor: any = await this.actorRepository.findOne(filter);
-
-        this.actorRepository.predictions(actor.id).create(prediction);
-        return actor;
+    if (bufferResult.body['user_id'] != null) {
+      const file: Express.Multer.File = bufferResult.files[0];
+      const filename = Date.now().toString() + '-' + file.originalname;
+      const user_id = bufferResult.body['user_id'];
+      const client = this.client();
+      const producer = await client.createProducer({
+        topic: 'predictions-queue', //a mettre dans le .env si on veut faire du kube
+      });
+      const data: PutObjectRequest = {
+        Bucket: process.env.BUCKET_NAME as string,
+        Key: filename,
+        Body: file.buffer
       }
-    }
-    catch (err) {
-      response.statusCode = 400;
-      return response.json({error: JSON.stringify(err)});
+      const result = s3.upload(data).promise().then(
+        function (data) {
+          console.log("Successfully uploaded to " + process.env.BUCKET_NAME + "/" + filename)
+        }).catch(
+          function (err) {
+            console.error(err, err.stack)
+          });
+
+      const content = {
+        path: 'https://' + process.env.BUCKET_NAME + "." + process.env.ENDPOINT + "/" + filename,
+        name: filename,
+        user: user_id,
+      };
+
+
+      producer.send({
+        data: Buffer.from(JSON.stringify(content)) //schema.toBuffer(content)
+      });
+
+      await producer.flush();
+
+      await producer.close();
+
+      const consumer = await client.subscribe({
+        topic: user_id,
+        subscription: 'pythonIA',
+        subscriptionType: 'Exclusive',
+
+      });
+      const msg = await consumer.receive(10000);
+      consumer.acknowledge(msg);
+      await consumer.close();
+      await client.close();
+      const response = JSON.parse(msg.getData().toString('utf-8'));
+      const Ia_response = response.speaker;
+      const filter: Filter<Actor> = {
+        where: {code_ia: Ia_response}
+      }
+      const actor: any = await this.actorRepository.findOne(filter);
+
+      const prediction = {
+        validation: false,
+        pending: true,
+        path: 'https://' + process.env.BUCKET_NAME + "." + process.env.ENDPOINT + "/" + filename,
+        user_id: user_id,
+      }
+      this.actorRepository.predictions(actor.id).create(prediction);
+      return actor;
     }
 
     response.statusCode = 400;
