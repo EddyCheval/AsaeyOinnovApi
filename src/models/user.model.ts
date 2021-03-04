@@ -36,6 +36,9 @@ export class User extends Entity {
   @property({
     type: 'date',
     required: true,
+    jsonSchema: {
+      format: 'date'
+    }
   })
   birthdate: string;
 
