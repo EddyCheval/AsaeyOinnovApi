@@ -73,7 +73,7 @@ export class UserController {
   })
   async login(
     @requestBody(Login) credentials: Login,
-  ): Promise<{token: string}> {
+  ): Promise<{token: string, user: User}> {
     if (credentials.email != null && credentials.password != null) {
       const filter: Filter<User> = {
         where: {
@@ -100,7 +100,7 @@ export class UserController {
       }
       // create a JSON Web Token based on the user profile
       const token = await this.jwtService.generateToken(userProfile);
-      return {token};
+      return {token, user: user};
     }
     else {
       throw new HttpErrors[401]("Empty Credentials")
