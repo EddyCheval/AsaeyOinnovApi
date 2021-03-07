@@ -1,6 +1,6 @@
 import {inject} from '@loopback/core';
 import {Filter, repository} from '@loopback/repository';
-import {get, getModelSchemaRef, Request, requestBody, response, Response, ResponseObject, RestBindings} from '@loopback/rest';
+import {getModelSchemaRef, post, Request, requestBody, response, Response, ResponseObject, RestBindings} from '@loopback/rest';
 import {PutObjectRequest} from 'aws-sdk/clients/s3';
 import Pulsar from 'pulsar-client';
 import {Actor, Prediction} from '../models';
@@ -63,7 +63,7 @@ export class PulsarController {
     return client;
   }
 
-  @get('/prediction')
+  @post('/prediction')
   @response(200, {
     description: 'Actor model instance',
     content: {'application/json': {schema: getModelSchemaRef(Prediction)}},
