@@ -1,3 +1,33 @@
+### :house: [Homepage](https://g72ze0duasao.umso.co/)
+
+## All links
+
+- [BackOffice](https://github.com/AlbanGuillet/OpenInnovBackOffice)
+- [Homepage](https://g72ze0duasao.umso.co/)
+- [IA](https://github.com/Nefaden/OpenInnovI2Backend)
+- [FRONT](https://github.com/SimonHuet/who-s-that-actor-front)
+
+## Author
+
+:bust_in_silhouette: Eddy Cheval
+
+- Github: [@EddyCheval](https://github.com/EddyCheval)
+
+## Other contributors
+
+:bust_in_silhouette: Yann Durand
+
+- Github: [@Nefaden](https://github.com/Nefaden)
+
+:bust_in_silhouette: Alban Guillet
+
+- Github: [@AlbanGuillet](https://github.com/AlbanGuillet)
+
+:bust_in_silhouette: Simon Huet
+
+- Github: [@SimonHuet](https://github.com/SimonHuet)
+
+
 # asaey-oinnov-api
 
 This application is generated using [LoopBack 4 CLI](https://loopback.io/doc/en/lb4/Command-line-interface.html) with the
@@ -66,32 +96,3 @@ npm run lint:fix
 ```sh
 npm test
 ```
-
-### :house: [Homepage](https://g72ze0duasao.umso.co/)
-
-## All links
-
-- [BackOffice](https://github.com/AlbanGuillet/OpenInnovBackOffice)
-- [Homepage](https://g72ze0duasao.umso.co/)
-- [IA](https://github.com/Nefaden/OpenInnovI2Backend)
-- [FRONT](https://github.com/SimonHuet/who-s-that-actor-front)
-
-## Author
-
-:bust_in_silhouette: Eddy Cheval
-
-- Github: [@EddyCheval](https://github.com/EddyCheval)
-
-## Other contributors
-
-:bust_in_silhouette: Yann Durand
-
-- Github: [@Nefaden](https://github.com/Nefaden)
-
-:bust_in_silhouette: Alban Guillet
-
-- Github: [@AlbanGuillet](https://github.com/AlbanGuillet)
-
-:bust_in_silhouette: Simon Huet
-
-- Github: [@SimonHuet](https://github.com/SimonHuet)
