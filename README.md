@@ -67,9 +67,31 @@ npm run lint:fix
 npm test
 ```
 
-## What's next
+### :house: [Homepage](https://g72ze0duasao.umso.co/)
 
-Please check out [LoopBack 4 documentation](https://loopback.io/doc/en/lb4/) to
-understand how you can continue to add features to this application.
+## All links
 
-[![LoopBack](https://github.com/strongloop/loopback-next/raw/master/docs/site/imgs/branding/Powered-by-LoopBack-Badge-(blue)-@2x.png)](http://loopback.io/)
+- [BackOffice](https://github.com/AlbanGuillet/OpenInnovBackOffice)
+- [Homepage](https://g72ze0duasao.umso.co/)
+- [IA](https://github.com/Nefaden/OpenInnovI2Backend)
+- [FRONT](https://github.com/SimonHuet/who-s-that-actor-front)
+
+## Author
+
+:bust_in_silhouette: Eddy Cheval
+
+- Github: [@EddyCheval](https://github.com/EddyCheval)
+
+## Other contributors
+
+:bust_in_silhouette: Yann Durand
+
+- Github: [@Nefaden](https://github.com/Nefaden)
+
+:bust_in_silhouette: Alban Guillet
+
+- Github: [@AlbanGuillet](https://github.com/AlbanGuillet)
+
+:bust_in_silhouette: Simon Huet
+
+- Github: [@SimonHuet](https://github.com/SimonHuet)
