@@ -1,6 +1,6 @@
-import {Entity, model, property, belongsTo} from '@loopback/repository';
-import {User} from './user.model';
+import {belongsTo, Entity, model, property} from '@loopback/repository';
 import {Actor} from './actor.model';
+import {User} from './user.model';
 
 @model()
 export class Prediction extends Entity {
@@ -16,6 +16,18 @@ export class Prediction extends Entity {
     required: true,
   })
   pending: boolean;
+
+  @property({
+    type: 'boolean',
+    required: true,
+  })
+  validation: boolean;
+
+  @property({
+    type: 'string',
+    required: true,
+  })
+  path: string;
 
   @belongsTo(() => User, {name: 'user_frg_key'})
   user_id: string;

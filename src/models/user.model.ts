@@ -1,4 +1,4 @@
-import {Entity, model, property, hasMany} from '@loopback/repository';
+import {Entity, hasMany, model, property} from '@loopback/repository';
 import {Prediction} from './prediction.model';
 
 @model()
@@ -24,6 +24,9 @@ export class User extends Entity {
 
   @property({
     type: 'string',
+    jsonSchema: {
+      nullable: true
+    }
   })
   address?: string;
 
@@ -36,12 +39,16 @@ export class User extends Entity {
   @property({
     type: 'date',
     required: true,
+    jsonSchema: {
+      format: 'date'
+    }
   })
   birthdate: string;
 
   @property({
     type: 'string',
     required: true,
+    hidden: true,
   })
   password: string;
 
